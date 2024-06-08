@@ -3,11 +3,12 @@ import { FormGroup, FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-import { switchMap } from 'rxjs';
+import { filter, switchMap } from 'rxjs';
 
 import { Hero, Publisher } from '../../interfaces/hero.interface';
 import { HeroesService } from '../../services/heroes.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-new-page',
@@ -37,6 +38,7 @@ export class NewPageComponent implements OnInit{
     private activatedRoute: ActivatedRoute,
     private router: Router,
     private snackbar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   get currentHero(): Hero {
@@ -77,7 +79,7 @@ export class NewPageComponent implements OnInit{
         // TODO: mostrar snackbar, y navegar a /heroes/edit/ hero.id
         this.router.navigate(['/heroes/edit', hero.id ]);
         this.showSnackbar(`${ hero.superhero } updated!`);
-      })
+      });
 
   }
 
@@ -88,10 +90,26 @@ export class NewPageComponent implements OnInit{
       data: this.heroForm.value
     });
 
-    dialogRef.afterClosed().subscribe(result => {
-      console.log('The dialog was closed');
-      console.log({result})
-    });
+    dialogRef.afterClosed()
+      .pipe(
+        filter( ( result: boolean ) => result ),
+        switchMap( () => this.heroesService.deleteHeroById( this.currentHero.id )),
+        filter( ( wasDeleted: boolean ) => wasDeleted ),
+      )
+
+      .subscribe( () => {
+        this.router.navigate(['/heroes']);
+      })
+
+    // dialogRef.afterClosed().subscribe(result => {
+    //   if ( !result ) return;
+
+    //   this.heroesService.deleteHeroById( this.currentHero.id )
+    //   .subscribe( wasDeleted => {
+    //     if ( wasDeleted )
+    //       this.router.navigate(['/heroes']);
+    //   })
+    // });
   }
 
   showSnackbar( message: string ): void {
